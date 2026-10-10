@@ -38,7 +38,7 @@ Rules:
 """
 
 st.title("🎓 Dissertation Proposal Coach")
-st.caption("Pilot Test: Purpose Statements & Research Questions")
+st.caption("Pilot Test: Purpose Statements & Research Questions | Model: `gemini-3.8-flash`")
 
 # 4. Chat History
 if "messages" not in st.session_state:
@@ -64,81 +64,6 @@ if prompt := st.chat_input("Enter your research question..."):
             try:
                 response = client.models.generate_content(
                     model="gemini-3.8-flash",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
-                        temperature=0.2,
-                    ),
-                )
-                reply = response.text
-                st.markdown(reply)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": reply}
-                )
-            except Exception as e:
-                st.error(f"API Error: {e}")        preferred_flash = [
-            m for m in available_models if "2.0-flash" in m or "flash" in m
-        ]
-        default_choice = (
-            preferred_flash[0] if preferred_flash else available_models[0]
-        )
-        selected_model = st.sidebar.selectbox(
-            "Active Gemini Model",
-            available_models,
-            index=available_models.index(default_choice),
-        )
-    else:
-        selected_model = st.sidebar.text_input(
-            "Model Name", value="gemini-2.0-flash"
-        )
-except Exception:
-    selected_model = st.sidebar.text_input(
-        "Model Name", value="gemini-2.0-flash"
-    )
-
-# 4. Grounding Prompt (Creswell & Terrell)
-SYSTEM_PROMPT = """You are an expert academic research coach auditing doctoral dissertation proposals based on the frameworks of Creswell and Terrell.
-Focus Area: Module 2 - Purpose Statements & Research Questions.
-
-Rules:
-1. Qualitative inquiry: Reject causal or directional terms (cause, impact, affect, relate, influence). Encourage exploratory language (how, what, explore, describe).
-2. Quantitative inquiry: Check for testable variables and comparative or relational structures.
-3. Anti-ghostwriting: Never write or rewrite the final question for the student.
-4. Always structure your feedback strictly with:
-   - **Observation**: What is present in the student's submission.
-   - **Critique**: Methodological alignment or issue per Creswell/Terrell.
-   - **Socratic Prompt**: One guiding question prompting the student to revise their own wording.
-"""
-
-st.title("🎓 Dissertation Proposal Coach")
-st.caption(
-    f"Pilot Test: Purpose Statements & Research Questions | Model: `{selected_model}`"
-)
-
-# 5. Chat History
-if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {
-            "role": "assistant",
-            "content": "Welcome! Enter a draft research question or purpose statement to audit its methodological alignment.",
-        }
-    ]
-
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
-
-# 6. User Input and Generation
-if prompt := st.chat_input("Enter your research question..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        with st.spinner("Auditing question structure..."):
-            try:
-                response = client.models.generate_content(
-                    model=selected_model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_PROMPT,
