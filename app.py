@@ -2,55 +2,78 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-st.set_page_config(page_title="Methodology Coach Test", layout="centered")
+st.set_page_config(page_title="Proposal Coach — Pilot", page_icon="🎓")
 
-# 1. API Key Handling (Checks Cloud Secrets, falls back to manual entry)
-api_key = st.secrets.get("GEMINI_API_KEY", None)
+# 1. API Key Setup
+api_key = st.secrets.get("GEMINI_API_KEY", "")
 if not api_key:
     api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
 
 if not api_key:
-    st.info("Paste your Gemini API key in the sidebar to begin testing.")
+    st.info("Please provide a Gemini API Key to continue.")
     st.stop()
 
-client = genai.Client(api_key=api_key)
+# Sanitize surrounding quotes or whitespace
+api_key = api_key.strip().strip('"').strip("'")
 
-# 2. Minimal Pilot Grounding (Creswell/Terrell Rule Test)
-SYSTEM_PROMPT = """
-You are an academic research coach auditing dissertation research questions.
+# 2. Initialize Google GenAI Client
+try:
+    client = genai.Client(api_key=api_key)
+except Exception as e:
+    st.error(f"Error initializing client: {e}")
+    st.stop()
+
+# 3. Grounding Prompt (Creswell & Terrell)
+SYSTEM_PROMPT = """You are an expert academic research coach auditing doctoral dissertation proposals based on the frameworks of Creswell and Terrell.
+Focus Area: Module 2 - Purpose Statements & Research Questions.
+
 Rules:
-- If the question is qualitative, reject directional or causal terms (e.g., 'cause', 'impact', 'affect', 'relate'). Advise exploratory phrasing ('how', 'what').
-- Do not write the question for the student. Provide 1 observation, 1 critique, and 1 Socratic question.
+1. Qualitative inquiry: Reject causal or directional terms (cause, impact, affect, relate, influence). Encourage exploratory language (how, what, explore, describe).
+2. Quantitative inquiry: Check for testable variables and comparative or relational structures.
+3. Anti-ghostwriting: Never write or rewrite the final question for the student.
+4. Always structure your feedback strictly with:
+   - **Observation**: What is present in the student's submission.
+   - **Critique**: Methodological alignment or issue per Creswell/Terrell.
+   - **Socratic Prompt**: One guiding question prompting the student to revise their own wording.
 """
 
-# 3. Maintain Chat Session
+st.title("🎓 Dissertation Proposal Coach")
+st.caption("Pilot Test: Purpose Statements & Research Questions")
+
+# 4. Chat History
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "Hello! Paste a draft research question, and I'll audit its methodological phrasing."}
+        {
+            "role": "assistant",
+            "content": "Welcome! Enter a draft research question or purpose statement to audit its methodological alignment.",
+        }
     ]
-
-st.title("🎓 Proposal Coach — Pilot Test")
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 4. Handle Input & Call Model
+# 5. User Input and Generation
 if prompt := st.chat_input("Enter your research question..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.markdown(prompt)
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            temperature=0.2,
-        ),
-    )
-
-    assistant_reply = response.text
-    st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
     with st.chat_message("assistant"):
-        st.markdown(assistant_reply)
+        with st.spinner("Auditing question structure..."):
+            try:
+                response = client.models.generate_content(
+                    model="gemini-1.5-flash",
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        temperature=0.2,
+                    ),
+                )
+                reply = response.text
+                st.markdown(reply)
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": reply}
+                )
+            except Exception as e:
+                st.error(f"API Error: {e}")
