@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -13,7 +14,6 @@ if not api_key:
     st.info("Please provide a Gemini API Key to continue.")
     st.stop()
 
-# Sanitize surrounding quotes or whitespace
 api_key = api_key.strip().strip('"').strip("'")
 
 # 2. Initialize Google GenAI Client
@@ -38,7 +38,7 @@ Rules:
 """
 
 st.title("🎓 Dissertation Proposal Coach")
-st.caption("Pilot Test: Purpose Statements & Research Questions | Model: `gemini-3.8-flash`")
+st.caption("Pilot Test: Purpose Statements & Research Questions")
 
 # 4. Chat History
 if "messages" not in st.session_state:
@@ -53,7 +53,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 5. User Input and Generation
+# 5. User Input and Generation with Auto-Retry
 if prompt := st.chat_input("Enter your research question..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -61,19 +61,36 @@ if prompt := st.chat_input("Enter your research question..."):
 
     with st.chat_message("assistant"):
         with st.spinner("Auditing question structure..."):
-            try:
-                response = client.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
-                        temperature=0.2,
-                    ),
-                )
-                reply = response.text
+            reply = None
+            models_to_try = ["gemini-3.8-flash", "gemini-2.0-flash"]
+
+            for model_name in models_to_try:
+                for attempt in range(2):  # Try twice per model
+                    try:
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=prompt,
+                            config=types.GenerateContentConfig(
+                                system_instruction=SYSTEM_PROMPT,
+                                temperature=0.2,
+                            ),
+                        )
+                        reply = response.text
+                        break
+                    except Exception as err:
+                        if "503" in str(err) or "UNAVAILABLE" in str(err):
+                            time.sleep(1.5)  # Brief wait before retry
+                            continue
+                        break
+                if reply:
+                    break
+
+            if reply:
                 st.markdown(reply)
                 st.session_state.messages.append(
                     {"role": "assistant", "content": reply}
                 )
-            except Exception as e:
-                st.error(f"API Error: {e}")
+            else:
+                st.warning(
+                    "The model service is currently experiencing heavy global traffic. Please submit your question once more."
+                )
