@@ -23,7 +23,38 @@ except Exception as e:
     st.error(f"Error initializing client: {e}")
     st.stop()
 
-# 3. Grounding Prompt (Creswell & Terrell)
+# 3. Dynamic Model Discovery
+# Queries Google's ModelService to find models available to your key
+try:
+    available_models = []
+    for m in client.models.list():
+        clean_name = m.name.split("/")[-1]
+        if "gemini" in clean_name.lower():
+            available_models.append(clean_name)
+
+    if available_models:
+        # Prioritize 2.0-flash, then any other flash model, then first available
+        preferred_flash = [
+            m for m in available_models if "2.0-flash" in m or "flash" in m
+        ]
+        default_choice = (
+            preferred_flash[0] if preferred_flash else available_models[0]
+        )
+        selected_model = st.sidebar.selectbox(
+            "Active Gemini Model",
+            available_models,
+            index=available_models.index(default_choice),
+        )
+    else:
+        selected_model = st.sidebar.text_input(
+            "Model Name", value="gemini-2.0-flash"
+        )
+except Exception:
+    selected_model = st.sidebar.text_input(
+        "Model Name", value="gemini-2.0-flash"
+    )
+
+# 4. Grounding Prompt (Creswell & Terrell)
 SYSTEM_PROMPT = """You are an expert academic research coach auditing doctoral dissertation proposals based on the frameworks of Creswell and Terrell.
 Focus Area: Module 2 - Purpose Statements & Research Questions.
 
@@ -38,9 +69,11 @@ Rules:
 """
 
 st.title("🎓 Dissertation Proposal Coach")
-st.caption("Pilot Test: Purpose Statements & Research Questions")
+st.caption(
+    f"Pilot Test: Purpose Statements & Research Questions | Model: `{selected_model}`"
+)
 
-# 4. Chat History
+# 5. Chat History
 if "messages" not in st.session_state:
     st.session_state.messages = [
         {
@@ -53,7 +86,7 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# 5. User Input and Generation
+# 6. User Input and Generation
 if prompt := st.chat_input("Enter your research question..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
@@ -63,7 +96,7 @@ if prompt := st.chat_input("Enter your research question..."):
         with st.spinner("Auditing question structure..."):
             try:
                 response = client.models.generate_content(
-                    model="gemini-1.5-flash",
+                    model=selected_model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
                         system_instruction=SYSTEM_PROMPT,
