@@ -1,5 +1,15 @@
+The persistent 503 "Service Unavailable" error is a bottleneck of the free tier in Google AI Studio during peak traffic spikes. While we cannot control Google's server load, we can mitigate the UX friction by building an automated retry loop into the app.
+
+Instead of failing immediately and making you click the button again, the updated code below will silently catch the 503 error, wait two seconds, and try again (up to three times) before finally showing an error message to the user.
+
+I have also updated the beta feedback button to use a placeholder Google/MS Form link and applied the bold HTML tags to **S**ystematic **E**valuation & **A**lignment **N**avigator in the subtitle.
+
+Replace your `app.py` in GitHub with this updated version:
+
+```python
 import streamlit as st
 import datetime
+import time
 from google import genai
 from google.genai import types
 
@@ -12,33 +22,13 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS to force a single-screen layout (preventing page scroll)
 st.markdown("""
     <style>
-        /* Hide the default Streamlit top header to buy more vertical space */
-        [data-testid="stHeader"] {
-            display: none;
-        }
-        .block-container {
-            padding-top: 1rem; 
-            padding-bottom: 1rem;
-        }
-        [data-testid="stSidebar"] {
-            min-width: 300px;
-            max-width: 300px;
-        }
-        .main-title {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-top: 0px;
-            margin-bottom: 0px;
-        }
-        .sub-title {
-            font-size: 1.1rem;
-            color: #555;
-            margin-top: 5px;
-            margin-bottom: 20px;
-        }
+        [data-testid="stHeader"] { display: none; }
+        .block-container { padding-top: 1rem; padding-bottom: 1rem; }
+        [data-testid="stSidebar"] { min-width: 300px; max-width: 300px; }
+        .main-title { font-size: 2.2rem; font-weight: 700; margin-top: 0px; margin-bottom: 0px; }
+        .sub-title { font-size: 1.1rem; color: #555; margin-top: 5px; margin-bottom: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -86,7 +76,6 @@ Collegial, academically rigorous, direct, and unpadded. Eliminate generic praise
 # ---------------------------------------------------------
 # State Management Initialization
 # ---------------------------------------------------------
-
 WELCOME_MESSAGE = """**Welcome to Project SEAN!** ✦ 
 
 I am your interactive methodological coach. This tool is designed for **iterative drafting**:
@@ -120,14 +109,12 @@ def update_drafts():
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("### Methodological Track")
-    
     methodology_track = st.radio(
         "Select your broad approach:",
         ["Qualitative", "Quantitative", "Mixed Methods"],
         index=0,
         label_visibility="collapsed"
     )
-    
     st.markdown("---")
     
     run_audit = st.button("🔍 Run Alignment Audit", type="primary", use_container_width=True)
@@ -161,22 +148,21 @@ with st.sidebar:
         st.session_state.rq = ""
         st.rerun()
 
-    # Beta Feedback Section
+    # Beta Feedback Section (Updated to Form Link)
     st.markdown("---")
     st.markdown("### 🛠️ Beta Feedback")
     st.markdown("<span style='font-size: 0.9rem;'>Help improve Project SEAN! Please report bugs or share your UX feedback.</span>", unsafe_allow_html=True)
     
-    # NOTE: Change 'your.email@niu.edu' to your actual email address
-    st.link_button("✉️ Email Developer", "mailto:your.email@niu.edu?subject=Project%20SEAN%20Beta%20Feedback", use_container_width=True)
+    # Placeholder for MS/Google Form
+    st.link_button("📝 Submit Feedback Form", "https://forms.gle/YOUR_PLACEHOLDER_LINK", use_container_width=True)
 
 # ---------------------------------------------------------
 # Main Viewport: Header & Workspace 
 # ---------------------------------------------------------
 st.markdown('<div class="main-title">✦ Project SEAN</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Systematic Evaluation & Alignment Navigator: A Pedagogical Scaffolding Tool for Graduate Research Proposals</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title"><b>S</b>ystematic <b>E</b>valuation & <b>A</b>lignment <b>N</b>avigator: A Pedagogical Scaffolding Tool for Graduate Research Proposals</div>', unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3)
-
 with col1:
     st.text_area("1. Problem Statement", value=st.session_state.problem, height=120, key="_problem", help="What is the specific gap in the literature or practical issue you are addressing? (The Gap)", on_change=update_drafts)
 with col2:
@@ -200,7 +186,7 @@ else:
     audit_scope = "FULL_ALIGNMENT"
 
 # ---------------------------------------------------------
-# Chat Rendering (Scrollable Container) & API Call
+# Chat Rendering & API Call with Auto-Retry Logic
 # ---------------------------------------------------------
 chat_container = st.container(height=380, border=False)
 
@@ -226,22 +212,42 @@ RQ: {st.session_state.rq}"""
         with st.chat_message("user"):
             st.markdown(ui_display_message)
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=system_payload,
-            config=types.GenerateContentConfig(
-                system_instruction=SYSTEM_PROMPT,
-                temperature=0.2, 
-            ),
-        )
-        assistant_reply = response.text
-        
+    # API Call Configuration with Retry Loop
+    max_retries = 3
+    retry_delay = 2 # Seconds to wait before trying again
+    api_success = False
+    assistant_reply = ""
+
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=system_payload,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.2, 
+                ),
+            )
+            assistant_reply = response.text
+            api_success = True
+            break # Exit the retry loop if successful
+            
+        except Exception as e:
+            error_msg = str(e)
+            if "503" in error_msg or "UNAVAILABLE" in error_msg or "429" in error_msg:
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay) # Wait and try again silently
+                    continue 
+            
+            # If it's not a 503/429, or we've run out of retries, throw the error
+            st.error("⚠️ The AI is currently experiencing high demand and could not complete the request after multiple attempts. Please try again in a few minutes.")
+            st.session_state.messages.pop() # Remove user message so they can easily retry
+            break 
+
+    if api_success:
         st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
         with chat_container:
             with st.chat_message("assistant"):
                 st.markdown(assistant_reply)
-            
-    except Exception as e:
-        st.error("⚠️ The AI is currently experiencing high demand. Please wait a few seconds and try again.")
-        st.session_state.messages.pop()
+
+```
