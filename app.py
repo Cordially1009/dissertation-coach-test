@@ -118,4 +118,125 @@ with st.sidebar:
     export_text += f"## 3. Research Questions\n{st.session_state.rq if st.session_state.rq else '[Not drafted]'}\n\n"
     export_text += f"---\n## Latest Diagnostic Feedback\n\n"
     
-    for msg in reversed(
+    for msg in reversed(st.session_state.messages):
+        if msg["role"] == "assistant" and "Welcome to Project SEAN" not in msg["content"]:
+            export_text += msg["content"]
+            break
+
+    st.download_button(
+        label="📥 Export Session Notes",
+        data=export_text,
+        file_name="SEAN_Session_Notes.md",
+        mime="text/markdown",
+        help="Download your current drafts and the latest AI feedback as a text file for your records.",
+        use_container_width=True
+    )
+    
+    if st.button("🔄 Reset Session", use_container_width=True):
+        st.session_state.messages = [{"role": "assistant", "content": WELCOME_MESSAGE}]
+        st.session_state.problem = ""
+        st.session_state.purpose = ""
+        st.session_state.rq = ""
+        st.rerun()
+
+    # Beta Feedback Section
+    st.markdown("---")
+    st.markdown("### 🛠️ Beta Feedback")
+    st.markdown("<span style='font-size: 0.9rem;'>Help improve Project SEAN! Please report bugs or share your UX feedback.</span>", unsafe_allow_html=True)
+    
+    # Placeholder for MS/Google Form
+    st.link_button("📝 Submit Feedback Form", "https://forms.gle/YOUR_PLACEHOLDER_LINK", use_container_width=True)
+
+# ---------------------------------------------------------
+# Main Viewport: Header & Workspace 
+# ---------------------------------------------------------
+st.markdown('<div class="main-title">✦ Project SEAN</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title"><b>S</b>ystematic <b>E</b>valuation & <b>A</b>lignment <b>N</b>avigator: A Pedagogical Scaffolding Tool for Graduate Research Proposals</div>', unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.text_area("1. Problem Statement", value=st.session_state.problem, height=120, key="_problem", help="What is the specific gap in the literature or practical issue you are addressing? (The Gap)", on_change=update_drafts)
+with col2:
+    st.text_area("2. Purpose Statement", value=st.session_state.purpose, height=120, key="_purpose", help="What is the overarching goal or intent of your study? (The Intent)", on_change=update_drafts)
+with col3:
+    st.text_area("3. Research Question(s)", value=st.session_state.rq, height=120, key="_rq", help="What are the specific, answerable questions that will guide your inquiry? (The Inquiry)", on_change=update_drafts)
+
+active_count = sum(1 for text in [st.session_state.problem, st.session_state.purpose, st.session_state.rq] if text.strip())
+
+if active_count == 0:
+    st.info("💡 **Status:** Ready for Ideation. Ask a question below or begin drafting.")
+    audit_scope = "IDEATION"
+elif active_count == 1:
+    st.warning("⚠️ **Status:** Isolated Element Audit (1 of 3 Elements Populated)")
+    audit_scope = "ISOLATED_ELEMENT"
+elif active_count == 2:
+    st.warning("⚠️ **Status:** Partial Alignment Audit (2 of 3 Elements Populated)")
+    audit_scope = "PARTIAL_ALIGNMENT"
+else:
+    st.success("✅ **Status:** Ready for Complete Alignment Audit (All 3 Elements Populated)")
+    audit_scope = "FULL_ALIGNMENT"
+
+# ---------------------------------------------------------
+# Chat Rendering & API Call with Auto-Retry Logic
+# ---------------------------------------------------------
+chat_container = st.container(height=380, border=False)
+
+with chat_container:
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
+chat_input = st.chat_input("Ask a clarifying question, request an example, or test out a concept...")
+
+if run_audit or chat_input:
+    ui_display_message = "*(Triggered Alignment Audit)*" if run_audit else chat_input
+    system_payload = f"""[USER INPUT]: {ui_display_message}
+Current Scope: {audit_scope}
+Methodology: {methodology_track}
+Problem: {st.session_state.problem}
+Purpose: {st.session_state.purpose}
+RQ: {st.session_state.rq}"""
+
+    st.session_state.messages.append({"role": "user", "content": ui_display_message})
+    
+    with chat_container:
+        with st.chat_message("user"):
+            st.markdown(ui_display_message)
+
+    # API Call Configuration with Retry Loop
+    max_retries = 3
+    retry_delay = 2 # Seconds to wait before trying again
+    api_success = False
+    assistant_reply = ""
+
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=system_payload,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    temperature=0.2, 
+                ),
+            )
+            assistant_reply = response.text
+            api_success = True
+            break # Exit the retry loop if successful
+            
+        except Exception as e:
+            error_msg = str(e)
+            if "503" in error_msg or "UNAVAILABLE" in error_msg or "429" in error_msg:
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay) # Wait and try again silently
+                    continue 
+            
+            # If it's not a 503/429, or we've run out of retries, throw the error
+            st.error("⚠️ The AI is currently experiencing high demand and could not complete the request after multiple attempts. Please try again in a few minutes.")
+            st.session_state.messages.pop() # Remove user message so they can easily retry
+            break 
+
+    if api_success:
+        st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
+        with chat_container:
+            with st.chat_message("assistant"):
+                st.markdown(assistant_reply)
