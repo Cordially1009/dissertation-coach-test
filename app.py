@@ -12,12 +12,16 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom CSS to prevent title clipping, size elements, and lock sidebar width
+# Custom CSS to force a single-screen layout (preventing page scroll)
 st.markdown("""
     <style>
+        /* Hide the default Streamlit top header to buy more vertical space */
+        [data-testid="stHeader"] {
+            display: none;
+        }
         .block-container {
-            padding-top: 3rem; /* Increased to prevent title cutoff */
-            padding-bottom: 2rem;
+            padding-top: 1rem; 
+            padding-bottom: 1rem;
         }
         [data-testid="stSidebar"] {
             min-width: 300px;
@@ -26,7 +30,7 @@ st.markdown("""
         .main-title {
             font-size: 2.2rem;
             font-weight: 700;
-            margin-top: 0.5rem;
+            margin-top: 0px;
             margin-bottom: 0px;
         }
         .sub-title {
@@ -68,7 +72,7 @@ ABSOLUTE GUARDRAILS:
 1. ANTI-GHOSTWRITING: Never draft, rewrite, complete, or provide sentence templates for the candidate's topic. 
 2. NO NAME-DROPPING: Do NOT mention Creswell, Terrell, or the names of specific textbooks in your responses. You must silently enforce their methodological principles without citing them to the user.
 3. DOMAIN-DISJOINT EXEMPLARS: If the candidate asks for an example, use an entirely unrelated discipline (e.g., deep-sea marine biology, Renaissance architecture).
-4. SUCCESS DIRECTIVE (WORKSPACE PINNING): When the student successfully revises a component and it demonstrates strong methodological alignment, praise the specific strength and EXPLICITLY instruct them to "copy your finalized [Problem/Purpose/Research Question] and paste it into the Workspace above" so it is locked in for the final audit.
+4. SUCCESS DIRECTIVE: When the student successfully revises a component and it demonstrates strong methodological alignment, praise the specific strength and EXPLICITLY instruct them to "copy your finalized [Problem/Purpose/Research Question] and paste it into the Workspace above" so it is ready for the final audit.
 
 MANDATORY AUDIT LAYOUT:
 Every diagnostic review must strictly follow this 3-part layout:
@@ -89,9 +93,11 @@ I am your interactive methodological coach. This tool is designed for **iterativ
 
 1. **Select your Methodological Track** in the sidebar.
 2. **Use this Chat to Brainstorm:** Don't have a draft yet? Ask me a conceptual question, request an example, or bounce ideas off me down here. 
-3. **Draft in the Workspace:** When you have a working draft, paste it into the three numbered boxes above. These boxes are your "locked" working document.
+3. **Draft in the Workspace:** When you have a working draft, paste it into the three numbered boxes above. These boxes hold your working document.
 4. **Run Alignment Audit:** Click the button in the sidebar to have me analyze how well your three boxes align. 
 5. **Revise & Repeat:** Use my feedback to rewrite your text in the boxes above, then audit again.
+
+*Note: You can export your session notes from the sidebar at any time to share with your advisor or peers.*
 
 *Not sure where to start? Try typing: "Can you show me an example of how this tool works?"*"""
 
@@ -110,7 +116,7 @@ def update_drafts():
     st.session_state.rq = st.session_state._rq
 
 # ---------------------------------------------------------
-# Sidebar: Methodological Configuration & Tools
+# Sidebar: Configuration, Tools & Feedback
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("### Methodological Track")
@@ -148,7 +154,6 @@ with st.sidebar:
         use_container_width=True
     )
     
-    st.markdown("---")
     if st.button("🔄 Reset Session", use_container_width=True):
         st.session_state.messages = [{"role": "assistant", "content": WELCOME_MESSAGE}]
         st.session_state.problem = ""
@@ -156,8 +161,16 @@ with st.sidebar:
         st.session_state.rq = ""
         st.rerun()
 
+    # Beta Feedback Section
+    st.markdown("---")
+    st.markdown("### 🛠️ Beta Feedback")
+    st.markdown("<span style='font-size: 0.9rem;'>Help improve Project SEAN! Please report bugs or share your UX feedback.</span>", unsafe_allow_html=True)
+    
+    # NOTE: Change 'your.email@niu.edu' to your actual email address
+    st.link_button("✉️ Email Developer", "mailto:your.email@niu.edu?subject=Project%20SEAN%20Beta%20Feedback", use_container_width=True)
+
 # ---------------------------------------------------------
-# Main Viewport: Header & Workspace (Pinned at Top)
+# Main Viewport: Header & Workspace 
 # ---------------------------------------------------------
 st.markdown('<div class="main-title">✦ Project SEAN</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Systematic Evaluation & Alignment Navigator: A Pedagogical Scaffolding Tool for Graduate Research Proposals</div>', unsafe_allow_html=True)
@@ -165,11 +178,11 @@ st.markdown('<div class="sub-title">Systematic Evaluation & Alignment Navigator:
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.text_area("1. Problem Statement", value=st.session_state.problem, height=150, key="_problem", help="What is the specific gap in the literature or practical issue you are addressing? (The Gap)", on_change=update_drafts)
+    st.text_area("1. Problem Statement", value=st.session_state.problem, height=120, key="_problem", help="What is the specific gap in the literature or practical issue you are addressing? (The Gap)", on_change=update_drafts)
 with col2:
-    st.text_area("2. Purpose Statement", value=st.session_state.purpose, height=150, key="_purpose", help="What is the overarching goal or intent of your study? (The Intent)", on_change=update_drafts)
+    st.text_area("2. Purpose Statement", value=st.session_state.purpose, height=120, key="_purpose", help="What is the overarching goal or intent of your study? (The Intent)", on_change=update_drafts)
 with col3:
-    st.text_area("3. Research Question(s)", value=st.session_state.rq, height=150, key="_rq", help="What are the specific, answerable questions that will guide your inquiry? (The Inquiry)", on_change=update_drafts)
+    st.text_area("3. Research Question(s)", value=st.session_state.rq, height=120, key="_rq", help="What are the specific, answerable questions that will guide your inquiry? (The Inquiry)", on_change=update_drafts)
 
 active_count = sum(1 for text in [st.session_state.problem, st.session_state.purpose, st.session_state.rq] if text.strip())
 
@@ -189,8 +202,7 @@ else:
 # ---------------------------------------------------------
 # Chat Rendering (Scrollable Container) & API Call
 # ---------------------------------------------------------
-# By setting a fixed height on this container, the workspace above stays pinned
-chat_container = st.container(height=450, border=False)
+chat_container = st.container(height=380, border=False)
 
 with chat_container:
     for msg in st.session_state.messages:
@@ -232,4 +244,4 @@ RQ: {st.session_state.rq}"""
             
     except Exception as e:
         st.error("⚠️ The AI is currently experiencing high demand. Please wait a few seconds and try again.")
-        st.session_state.messages.pop() # Remove the user's triggering message so they can try again
+        st.session_state.messages.pop()
