@@ -7,7 +7,7 @@ from google.genai import types
 # Page Configuration
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Project SEAN — Systematic Evaluation & Alignment Navigator",
+    page_title="Project SEAN — Alignment Navigator",
     page_icon="🎓",
     layout="wide",
 )
@@ -35,11 +35,12 @@ except Exception as e:
 SYSTEM_PROMPT = """You are Project SEAN (Systematic Evaluation & Alignment Navigator), an expert academic research design coach auditing graduate research proposals grounded in Creswell & Creswell and Terrell.
 
 CORE MISSION:
-Audit methodological alignment between the Problem Statement, Purpose Statement, and Research Questions. Cultivate scholarly agency and critical thinking through structured Socratic interrogation.
+Audit methodological alignment between the Problem Statement, Purpose Statement, and Research Questions. Cultivate scholarly agency and critical thinking through structured Socratic interrogation. 
+*Note: The user only selects a broad methodology (Qualitative/Quantitative/Mixed). If they have not established a specific design/tradition (e.g., Phenomenology, Case Study, Correlational), use your Socratic dialogue to help them figure out the best fit.*
 
 ABSOLUTE GUARDRAILS:
 1. ANTI-GHOSTWRITING: Never draft, rewrite, complete, or provide sentence templates for the candidate's topic. Never offer "suggested phrasing" in finished prose.
-2. DOMAIN-DISJOINT EXEMPLARS: If the candidate asks for an example, you MUST use an entirely unrelated discipline (e.g., deep-sea marine biology, Renaissance architecture, astrophysics). Explicitly state that the example comes from an unrelated field to illustrate structural logic without completing their thinking.
+2. DOMAIN-DISJOINT EXEMPLARS: If the candidate asks for an example, you MUST use an entirely unrelated discipline (e.g., deep-sea marine biology, Renaissance architecture, astrophysics).
 3. THREE-TIER GRADUATED SCAFFOLDING (When the student is stuck):
    - Tier 1 (Probe): Name the conceptual tension and ask them to reflect on it.
    - Tier 2 (Theoretical Context): Explain the underlying Creswell/Terrell rule.
@@ -57,8 +58,11 @@ Collegial, academically rigorous, direct, and unpadded. Eliminate generic praise
 # ---------------------------------------------------------
 # State Management Initialization
 # ---------------------------------------------------------
+# Welcome message injected on first load
 if "messages" not in st.session_state:
-    st.session_state.messages = []
+    st.session_state.messages = [
+        {"role": "assistant", "content": "**Welcome to Project SEAN!** 👋 \n\nI am your Socratic methodological coach. To begin:\n1. Select your broad **Methodological Track** in the sidebar.\n2. Draft your ideas in the **Workspace** above (you can start with just one field or all three).\n3. Click **Run Alignment Audit** for feedback, or ask me a direct question below to brainstorm your specific research tradition."}
+    ]
 if "problem" not in st.session_state:
     st.session_state.problem = ""
 if "purpose" not in st.session_state:
@@ -82,20 +86,14 @@ with st.sidebar:
         "Methodological Track",
         ["Qualitative", "Quantitative", "Mixed Methods"],
         index=0,
+        help="Select your broad approach. We can discuss your specific research design in the chat."
     )
     
-    tradition_options = {
-        "Qualitative": ["Phenomenology", "Case Study", "Grounded Theory", "Ethnography", "Narrative Inquiry"],
-        "Quantitative": ["Experimental", "Quasi-Experimental", "Correlational", "Descriptive / Survey"],
-        "Mixed Methods": ["Convergent Parallel", "Explanatory Sequential", "Exploratory Sequential"]
-    }
-    
-    selected_tradition = st.selectbox("Design / Tradition", tradition_options[methodology_track])
-    
     st.markdown("---")
-    st.markdown("### Session Tools")
     if st.button("🔄 Reset Session", use_container_width=True):
-        st.session_state.messages = []
+        st.session_state.messages = [
+            {"role": "assistant", "content": "**Session Reset.** Select a methodology and draft your ideas above, or ask a question to begin."}
+        ]
         st.session_state.problem = ""
         st.session_state.purpose = ""
         st.session_state.rq = ""
@@ -105,24 +103,22 @@ with st.sidebar:
 # Main Viewport: Header & Workspace
 # ---------------------------------------------------------
 st.title("🎓 Project SEAN")
-st.markdown("##### Systematic Evaluation & Alignment Navigator | Problem, Purpose & Research Questions Alignment")
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("##### Problem, Purpose & Research Questions Alignment Navigator")
 
-st.markdown("#### 📋 Methodological Alignment Workspace")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    st.text_area("1. Problem Statement (The Gap)", value=st.session_state.problem, height=200, key="_problem", on_change=update_drafts)
+    st.text_area("1. Problem Statement", value=st.session_state.problem, height=130, key="_problem", help="What is the specific gap in the literature or practical issue you are addressing? (The Gap)", on_change=update_drafts)
 with col2:
-    st.text_area("2. Purpose Statement (The Intent)", value=st.session_state.purpose, height=200, key="_purpose", on_change=update_drafts)
+    st.text_area("2. Purpose Statement", value=st.session_state.purpose, height=130, key="_purpose", help="What is the overarching goal or intent of your study? (The Intent)", on_change=update_drafts)
 with col3:
-    st.text_area("3. Research Question(s) (The Inquiry)", value=st.session_state.rq, height=200, key="_rq", on_change=update_drafts)
+    st.text_area("3. Research Question(s)", value=st.session_state.rq, height=130, key="_rq", help="What are the specific, answerable questions that will guide your inquiry? (The Inquiry)", on_change=update_drafts)
 
 # Conditional Routing & Status Badge
 active_count = sum(1 for text in [st.session_state.problem, st.session_state.purpose, st.session_state.rq] if text.strip())
 
 if active_count == 0:
-    st.info("✅ **Status:** Ready for Ideation / Exploratory Conceptual Questions")
+    st.info("💡 **Status:** Ready for Ideation. Ask a question below or begin drafting.")
     audit_scope = "IDEATION: The student is exploring ideas. Act as a conceptual boundary-setter."
 elif active_count == 1:
     st.warning("⚠️ **Status:** Isolated Element Audit (1 of 3 Elements Populated)")
@@ -140,53 +136,49 @@ else:
 b_col1, b_col2 = st.columns([1, 1])
 
 with b_col1:
-    run_audit = st.button("🔍 Run Methodological Alignment Audit", type="primary", use_container_width=True)
+    run_audit = st.button("🔍 Run Alignment Audit", type="primary", use_container_width=True)
 
 with b_col2:
     # Prepare the Export Document dynamically
     export_text = f"# Project SEAN: Session Summary & Notes\n"
     export_text += f"**Date:** {datetime.datetime.now().strftime('%B %d, %Y - %H:%M')}\n"
-    export_text += f"**Methodology:** {methodology_track} ({selected_tradition})\n\n"
+    export_text += f"**Methodology:** {methodology_track}\n\n"
     export_text += f"## 1. Problem Statement\n{st.session_state.problem if st.session_state.problem else '[Not drafted]'}\n\n"
     export_text += f"## 2. Purpose Statement\n{st.session_state.purpose if st.session_state.purpose else '[Not drafted]'}\n\n"
     export_text += f"## 3. Research Questions\n{st.session_state.rq if st.session_state.rq else '[Not drafted]'}\n\n"
     export_text += f"---\n## Latest Diagnostic Feedback\n\n"
     
-    # Grab the last assistant message for the export notes
     for msg in reversed(st.session_state.messages):
-        if msg["role"] == "assistant":
+        if msg["role"] == "assistant" and "Welcome to Project SEAN" not in msg["content"]:
             export_text += msg["content"]
             break
 
     st.download_button(
-        label="📥 Export Summary & Session Notes",
+        label="📥 Export Session Notes",
         data=export_text,
         file_name="SEAN_Session_Notes.md",
         mime="text/markdown",
         use_container_width=True
     )
 
-st.markdown("---")
-st.markdown("### 💬 Socratic Dialogue & Feedback")
+st.divider()
 
-# Render existing chat history
+# ---------------------------------------------------------
+# Chat Rendering & API Call
+# ---------------------------------------------------------
 for msg in st.session_state.messages:
-    if msg["role"] != "system_hidden": # Hide the backend prompt from the UI
+    if msg["role"] != "system_hidden":
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-# ---------------------------------------------------------
-# Conversational Input & API Call
-# ---------------------------------------------------------
 chat_input = st.chat_input("Ask a clarifying question or test out a concept...")
 
 if run_audit or chat_input:
-    # 1. Construct the context-aware payload
     if run_audit:
-        ui_display_message = "*(Triggered Methodological Alignment Audit)*"
+        ui_display_message = "*(Triggered Alignment Audit)*"
         system_payload = f"""[AUDIT REQUEST]
 Current Scope: {audit_scope}
-Methodology: {methodology_track} ({selected_tradition})
+Methodology: {methodology_track}
 Problem: {st.session_state.problem}
 Purpose: {st.session_state.purpose}
 RQ: {st.session_state.rq}"""
@@ -194,31 +186,28 @@ RQ: {st.session_state.rq}"""
         ui_display_message = chat_input
         system_payload = f"""[USER QUESTION]: {chat_input}
 Current Scope: {audit_scope}
-Methodology: {methodology_track} ({selected_tradition})
+Methodology: {methodology_track}
 Problem: {st.session_state.problem}
 Purpose: {st.session_state.purpose}
 RQ: {st.session_state.rq}"""
 
-    # 2. Append to UI and Session State
     st.session_state.messages.append({"role": "user", "content": ui_display_message})
     with st.chat_message("user"):
         st.markdown(ui_display_message)
 
-    # 3. Call Gemini
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=system_payload,
             config=types.GenerateContentConfig(
                 system_instruction=SYSTEM_PROMPT,
-                temperature=0.2, # Low temp to keep critiques rigid and academic
+                temperature=0.2, 
             ),
         )
         assistant_reply = response.text
     except Exception as e:
         assistant_reply = f"API Error: {e}"
 
-    # 4. Save and display response
     st.session_state.messages.append({"role": "assistant", "content": assistant_reply})
     with st.chat_message("assistant"):
         st.markdown(assistant_reply)
