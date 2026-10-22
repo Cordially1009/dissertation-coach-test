@@ -96,17 +96,18 @@ def update_drafts():
     st.session_state.rq = st.session_state._rq
 
 # ---------------------------------------------------------
-# Sidebar: Configuration, Tools & Feedback
+# Sidebar: Compacted Configuration, Tools & Links
 # ---------------------------------------------------------
 with st.sidebar:
-    st.markdown("### Methodological Track")
+    st.markdown("**Methodological Track**")
     methodology_track = st.radio(
         "Select your broad approach:",
         ["Qualitative", "Quantitative", "Mixed Methods"],
         index=0,
         label_visibility="collapsed"
     )
-    st.markdown("---")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
     
     run_audit = st.button("🔍 Run Alignment Audit", type="primary", use_container_width=True)
     
@@ -139,18 +140,11 @@ with st.sidebar:
         st.session_state.rq = ""
         st.rerun()
 
-    # Beta Feedback Section
-    st.markdown("---")
-    st.markdown("### 🛠️ Beta Feedback")
-    st.markdown("<span style='font-size: 0.9rem;'>Help improve Project SEAN! Please report bugs or share your UX feedback.</span>", unsafe_allow_html=True)
-    
-    # Placeholder for MS/Google Form
-    st.link_button("📝 Submit Feedback Form", "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=kDOH6hyMMUKnmWtaAjWy5oTUNf5pOKlJt5oCUaeEqkxURFpaSzM2WlVZMkkwMFFFVFdWSkUzQ1VJVS4u", use_container_width=True)
-
-    # Shareable App Link
-    st.markdown("---")
-    st.markdown("### 🔗 Share Project SEAN")
-    st.markdown("**Direct Link:** [tinyurl.com/ProjectSEAN](https://tinyurl.com/projectSEAN)")
+    # Compacted Beta Feedback & Share Section
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("**🛠️ Beta Feedback & Share**")
+    st.link_button("📝 Submit Feedback Form", "https://tinyurl.com/projectSEAN", use_container_width=True)
+    st.caption("🔗 Direct Link: [tinyurl.com/projectSEAN](https://tinyurl.com/projectSEAN)")
 
 # ---------------------------------------------------------
 # Main Viewport: Header & Workspace 
