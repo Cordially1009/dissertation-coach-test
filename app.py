@@ -77,7 +77,7 @@ I am your interactive methodological coach. This tool is designed for **iterativ
 4. **Run Alignment Audit:** Click the button in the sidebar to have me analyze how well your three boxes align. 
 5. **Revise & Repeat:** Use my feedback to rewrite your text in the boxes above, then audit again.
 
-*Note: You can export your session notes from the sidebar at any time to share with your advisor or peers.*
+*Note: You can export your session notes from the sidebar at any time. Click **Reset Session** to clear your workspace and chat history to start a new topic.*
 
 *Not sure where to start? Try typing: "Can you show me an example of how this tool works?"*"""
 
@@ -134,16 +134,22 @@ with st.sidebar:
     )
     
     if st.button("🔄 Reset Session", use_container_width=True):
+        # Reset the chat
         st.session_state.messages = [{"role": "assistant", "content": WELCOME_MESSAGE}]
+        # Reset the underlying data variables
         st.session_state.problem = ""
         st.session_state.purpose = ""
         st.session_state.rq = ""
+        # Explicitly wipe the widget UI keys to clear the screen
+        st.session_state._problem = ""
+        st.session_state._purpose = ""
+        st.session_state._rq = ""
         st.rerun()
 
     # Compacted Beta Feedback & Share Section
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("**🛠️ Beta Feedback & Share**")
-    st.link_button("📝 Submit Feedback Form", "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=kDOH6hyMMUKnmWtaAjWy5oTUNf5pOKlJt5oCUaeEqkxURFpaSzM2WlVZMkkwMFFFVFdWSkUzQ1VJVS4u", use_container_width=True)
+    st.link_button("📝 Submit Feedback Form", "https://tinyurl.com/projectSEAN", use_container_width=True)
     st.caption("🔗 Direct Link: [tinyurl.com/projectSEAN](https://tinyurl.com/projectSEAN)")
 
 # ---------------------------------------------------------
