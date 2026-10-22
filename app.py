@@ -147,6 +147,11 @@ with st.sidebar:
     # Placeholder for MS/Google Form
     st.link_button("📝 Submit Feedback Form", "https://forms.cloud.microsoft/Pages/ResponsePage.aspx?id=kDOH6hyMMUKnmWtaAjWy5oTUNf5pOKlJt5oCUaeEqkxURFpaSzM2WlVZMkkwMFFFVFdWSkUzQ1VJVS4u", use_container_width=True)
 
+    # Shareable App Link
+    st.markdown("---")
+    st.markdown("### 🔗 Share Project SEAN")
+    st.markdown("**Direct Link:** [tinyurl.com/ProjectSEAN](https://tinyurl.com/projectSEAN)")
+
 # ---------------------------------------------------------
 # Main Viewport: Header & Workspace 
 # ---------------------------------------------------------
