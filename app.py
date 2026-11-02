@@ -149,7 +149,7 @@ with st.sidebar:
     # Compacted Beta Feedback & Share Section
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("**🛠️ Beta Feedback & Share**")
-    st.link_button("📝 Submit Feedback Form", "https://tinyurl.com/projectSEAN", use_container_width=True)
+    st.link_button("📝 Submit Feedback Form", "https://forms.cloud.microsoft/r/2Xn5FYvMKm", use_container_width=True)
     st.caption("🔗 Direct Link: [tinyurl.com/projectSEAN](https://tinyurl.com/projectSEAN)")
 
 # ---------------------------------------------------------
