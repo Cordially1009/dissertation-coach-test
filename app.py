@@ -20,6 +20,13 @@ st.markdown("""
         [data-testid="stSidebar"] { min-width: 300px; max-width: 300px; }
         .main-title { font-size: 2.2rem; font-weight: 700; margin-top: 0px; margin-bottom: 0px; }
         .sub-title { font-size: 1.1rem; color: #555; margin-top: 5px; margin-bottom: 20px; }
+        
+        /* Make chat input more pronounced */
+        [data-testid="stChatInput"] {
+            border: 2px solid #4A90E2 !important;
+            border-radius: 10px;
+            box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -99,54 +106,51 @@ def update_drafts():
 # Sidebar: Compacted Configuration, Tools & Links
 # ---------------------------------------------------------
 with st.sidebar:
-    st.markdown("**Methodological Track**")
+    # Removed label_visibility="collapsed" to allow the 'help' tool-tip to appear
     methodology_track = st.radio(
-        "Select your broad approach:",
+        "**Methodological Track**",
         ["Qualitative", "Quantitative", "Mixed Methods"],
         index=0,
-        label_visibility="collapsed"
+        help="**Qualitative:** Explores meaning, behaviors, and experiences (e.g., Interviews, Focus Groups).\n\n**Quantitative:** Tests theories and variables using numerical data (e.g., Surveys, Experiments).\n\n**Mixed Methods:** Integrates both approaches for a comprehensive understanding."
     )
     
     st.markdown("<br>", unsafe_allow_html=True)
     
     run_audit = st.button("🔍 Run Alignment Audit", type="primary", use_container_width=True)
     
-    export_text = f"# Project SEAN: Session Summary & Notes\n"
-    export_text += f"**Date:** {datetime.datetime.now().strftime('%B %d, %Y - %H:%M')}\n"
-    export_text += f"**Methodology:** {methodology_track}\n\n"
-    export_text += f"## 1. Problem Statement\n{st.session_state.problem if st.session_state.problem else '[Not drafted]'}\n\n"
-    export_text += f"## 2. Purpose Statement\n{st.session_state.purpose if st.session_state.purpose else '[Not drafted]'}\n\n"
-    export_text += f"## 3. Research Questions\n{st.session_state.rq if st.session_state.rq else '[Not drafted]'}\n\n"
-    export_text += f"---\n## Latest Diagnostic Feedback\n\n"
+    export_text = f"Project SEAN: Session Summary & Notes\n"
+    export_text += f"Date: {datetime.datetime.now().strftime('%B %d, %Y - %H:%M')}\n"
+    export_text += f"Methodology: {methodology_track}\n\n"
+    export_text += f"--- 1. Problem Statement ---\n{st.session_state.problem if st.session_state.problem else '[Not drafted]'}\n\n"
+    export_text += f"--- 2. Purpose Statement ---\n{st.session_state.purpose if st.session_state.purpose else '[Not drafted]'}\n\n"
+    export_text += f"--- 3. Research Questions ---\n{st.session_state.rq if st.session_state.rq else '[Not drafted]'}\n\n"
+    export_text += f"---------------------------------\nLatest Diagnostic Feedback\n\n"
     
     for msg in reversed(st.session_state.messages):
         if msg["role"] == "assistant" and "Welcome to Project SEAN" not in msg["content"]:
             export_text += msg["content"]
             break
 
+    # Swapped from .md to .txt
     st.download_button(
         label="📥 Export Session Notes",
         data=export_text,
-        file_name="SEAN_Session_Notes.md",
-        mime="text/markdown",
-        help="Download your current drafts and the latest AI feedback as a text file for your records.",
+        file_name="SEAN_Session_Notes.txt",
+        mime="text/plain",
+        help="Download your current drafts and the latest AI feedback as a plain text file for your records.",
         use_container_width=True
     )
     
     if st.button("🔄 Reset Session", use_container_width=True):
-        # Reset the chat
         st.session_state.messages = [{"role": "assistant", "content": WELCOME_MESSAGE}]
-        # Reset the underlying data variables
         st.session_state.problem = ""
         st.session_state.purpose = ""
         st.session_state.rq = ""
-        # Explicitly wipe the widget UI keys to clear the screen
         st.session_state._problem = ""
         st.session_state._purpose = ""
         st.session_state._rq = ""
         st.rerun()
 
-    # Compacted Beta Feedback & Share Section
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown("**🛠️ Beta Feedback & Share**")
     st.link_button("📝 Submit Feedback Form", "https://forms.cloud.microsoft/r/2Xn5FYvMKm", use_container_width=True)
@@ -157,6 +161,9 @@ with st.sidebar:
 # ---------------------------------------------------------
 st.markdown('<div class="main-title">✦ Project SEAN</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title"><b>S</b>ystematic <b>E</b>valuation & <b>A</b>lignment <b>N</b>avigator: A Pedagogical Scaffolding Tool for Graduate Research Proposals</div>', unsafe_allow_html=True)
+
+# Desktop Optimization Disclaimer added here
+st.info("💻 **Desktop Recommended:** Project SEAN utilizes a split-screen design to anchor your working drafts while you chat. For optimal performance and visibility, please use a desktop or laptop computer.")
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -191,7 +198,8 @@ with chat_container:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-chat_input = st.chat_input("Ask a clarifying question, request an example, or test out a concept...")
+# Placeholder updated to grab attention
+chat_input = st.chat_input("💬 Chat with SEAN: Ask a question, request an example, or test a concept...")
 
 if run_audit or chat_input:
     ui_display_message = "*(Triggered Alignment Audit)*" if run_audit else chat_input
@@ -208,9 +216,8 @@ RQ: {st.session_state.rq}"""
         with st.chat_message("user"):
             st.markdown(ui_display_message)
 
-    # API Call Configuration with Retry Loop
     max_retries = 3
-    retry_delay = 2 # Seconds to wait before trying again
+    retry_delay = 2 
     api_success = False
     assistant_reply = ""
 
@@ -226,18 +233,17 @@ RQ: {st.session_state.rq}"""
             )
             assistant_reply = response.text
             api_success = True
-            break # Exit the retry loop if successful
+            break 
             
         except Exception as e:
             error_msg = str(e)
             if "503" in error_msg or "UNAVAILABLE" in error_msg or "429" in error_msg:
                 if attempt < max_retries - 1:
-                    time.sleep(retry_delay) # Wait and try again silently
+                    time.sleep(retry_delay) 
                     continue 
             
-            # If it's not a 503/429, or we've run out of retries, throw the error
             st.error("⚠️ The AI is currently experiencing high demand and could not complete the request after multiple attempts. Please try again in a few minutes.")
-            st.session_state.messages.pop() # Remove user message so they can easily retry
+            st.session_state.messages.pop() 
             break 
 
     if api_success:
