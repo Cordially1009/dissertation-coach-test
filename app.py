@@ -84,11 +84,10 @@ I am your interactive methodological coach. This tool is designed for **iterativ
 4. **Run Alignment Audit:** Click the button in the sidebar to have me analyze how well your three boxes align. 
 5. **Revise & Repeat:** Use my feedback to rewrite your text in the boxes above, then audit again.
 
-*Note: You can export your session notes from the sidebar at any time. Click **Reset Session** to clear your workspace and chat history to start a new topic.*
-
-💻 **Desktop Recommended:** Project SEAN utilizes a split-screen design to anchor your working drafts while you chat. For optimal performance and visibility, please use a desktop or laptop computer.
-
-*Not sure where to start? Try typing: "Can you show me an example of how this tool works?"*"""
+**System Recommendations & Notes:**
+*   **Desktop Recommended:** Project SEAN utilizes a split-screen design to anchor your working drafts while you chat. For optimal performance and visibility, please use a desktop or laptop computer.
+*   **Export & Reset:** You can export your session notes from the sidebar at any time. Click **Reset Session** to clear your workspace and chat history to start a new topic.
+*   **Getting Started:** Not sure where to begin? Try typing: *"Can you show me an example of how this tool works?"*"""
 
 if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": WELCOME_MESSAGE}]
