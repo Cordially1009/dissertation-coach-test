@@ -86,6 +86,8 @@ I am your interactive methodological coach. This tool is designed for **iterativ
 
 *Note: You can export your session notes from the sidebar at any time. Click **Reset Session** to clear your workspace and chat history to start a new topic.*
 
+💻 **Desktop Recommended:** Project SEAN utilizes a split-screen design to anchor your working drafts while you chat. For optimal performance and visibility, please use a desktop or laptop computer.
+
 *Not sure where to start? Try typing: "Can you show me an example of how this tool works?"*"""
 
 if "messages" not in st.session_state:
@@ -106,7 +108,6 @@ def update_drafts():
 # Sidebar: Compacted Configuration, Tools & Links
 # ---------------------------------------------------------
 with st.sidebar:
-    # Removed label_visibility="collapsed" to allow the 'help' tool-tip to appear
     methodology_track = st.radio(
         "**Methodological Track**",
         ["Qualitative", "Quantitative", "Mixed Methods"],
@@ -131,7 +132,6 @@ with st.sidebar:
             export_text += msg["content"]
             break
 
-    # Swapped from .md to .txt
     st.download_button(
         label="📥 Export Session Notes",
         data=export_text,
@@ -162,8 +162,7 @@ with st.sidebar:
 st.markdown('<div class="main-title">✦ Project SEAN</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title"><b>S</b>ystematic <b>E</b>valuation & <b>A</b>lignment <b>N</b>avigator: A Pedagogical Scaffolding Tool for Graduate Research Proposals</div>', unsafe_allow_html=True)
 
-# Desktop Optimization Disclaimer added here
-st.info("💻 **Desktop Recommended:** Project SEAN utilizes a split-screen design to anchor your working drafts while you chat. For optimal performance and visibility, please use a desktop or laptop computer.")
+# (The st.info disclaimer has been removed from here to save vertical space)
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -198,7 +197,6 @@ with chat_container:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
 
-# Placeholder updated to grab attention
 chat_input = st.chat_input("💬 Chat with SEAN: Ask a question, request an example, or test a concept...")
 
 if run_audit or chat_input:
@@ -224,7 +222,7 @@ RQ: {st.session_state.rq}"""
     for attempt in range(max_retries):
         try:
             response = client.models.generate_content(
-                model="gemini-3.6-flash",
+                model="gemini-3.5-flash",
                 contents=system_payload,
                 config=types.GenerateContentConfig(
                     system_instruction=SYSTEM_PROMPT,
